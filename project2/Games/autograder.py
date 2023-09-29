@@ -21,6 +21,7 @@ import re
 import sys
 import projectParams
 import random
+import html
 random.seed(0)
 try:
     from pacman import GameState

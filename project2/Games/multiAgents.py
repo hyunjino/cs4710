@@ -74,7 +74,48 @@ class ReflexAgent(Agent):
         newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates]
 
         "*** YOUR CODE HERE ***"
-        return successorGameState.getScore()
+        value = successorGameState.getScore()
+        # check if successor is win or loss
+        if successorGameState.isWin():
+            return 1000000
+        elif successorGameState.isLose():
+            return -1000000
+
+        if(action == Directions.STOP):
+            value -= 100
+        
+        #if successor means eating food
+        if successorGameState.getNumFood() < currentGameState.getNumFood():
+            value += 300
+        else: 
+            value -= 100
+
+        #if it means getting closer to food
+        # closestFoodDist = 1000000
+        # closestFoodPos = currentGameState.getFood()[0]
+
+        # for i in currentGameState.getFood():
+        #     dist = util.manhattanDistance(currentGameState.getPacmanPosition(), i)
+        #     if dist < closestFoodDist:
+        #         closestFoodDist = dist
+        #         closestFoodPos = i
+
+        # if util.manhattanDistance(newPos, closestFoodPos) < closestFoodDist:
+        #     value += 300
+
+        
+
+        #if successor position is the same position as a ghost that is not scared vs one that is scared
+        for i in newGhostStates:
+            if newPos == i.getPosition():
+                if i.scaredTimer == 0:
+                    return -1000000
+                else:
+                    return 1000000
+
+        
+
+        return value
 
 def scoreEvaluationFunction(currentGameState):
     """
@@ -135,7 +176,47 @@ class MinimaxAgent(MultiAgentSearchAgent):
         Returns whether or not the game state is a losing state
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        def performMinimax(depth, agentIndex, gameState):
+            #if node is terminal or depth = 0
+            if (gameState.isWin() or gameState.isLose() or depth == 0):
+                return self.evaluationFunction(gameState), ""
+
+            if agentIndex == 0:
+                return maxValue(depth, agentIndex, gameState)
+            # agent is a ghost
+            else:
+                return minValue(depth, agentIndex, gameState)
+
+        def maxValue(depth, agentIndex, gameState):
+            value = -1000000
+            bestAction = ""
+            actions = gameState.getLegalActions(agentIndex)
+            for i in actions:
+                child = gameState.generateSuccessor(agentIndex, i)
+                util = performMinimax(depth, agentIndex + 1, child)[0]
+                if util > value:
+                    value = util
+                    bestAction = i
+            return value, bestAction
+        
+        def minValue(depth, agentIndex, gameState):
+            nextAgent = agentIndex + 1
+            nextDepth = depth
+
+            #if all ghosts have gone, make next agent pacman and go down a depth
+            if nextAgent == gameState.getNumAgents():
+                nextAgent = 0
+                nextDepth -= 1
+
+            value = 1000000
+            actions = gameState.getLegalActions(agentIndex)
+            for i in actions:
+                child = gameState.generateSuccessor(agentIndex, i)
+                value = min(value, performMinimax(nextDepth, nextAgent, child)[0])
+            return value, ""
+
+        return performMinimax(self.depth, 0, gameState)[1]
+    
 
 class AlphaBetaAgent(MultiAgentSearchAgent):
     """
@@ -147,7 +228,52 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
         Returns the minimax action using self.depth and self.evaluationFunction
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        def performAlphaBeta(depth, agentIndex, gameState, alpha, beta):
+            #if node is terminal or depth = 0
+            if (gameState.isWin() or gameState.isLose() or depth == 0):
+                return self.evaluationFunction(gameState), ""
+
+            if agentIndex == 0:
+                return maxValue(depth, agentIndex, gameState, alpha, beta)
+            # agent is a ghost
+            else:
+                return minValue(depth, agentIndex, gameState, alpha, beta)
+
+        def maxValue(depth, agentIndex, gameState, alpha, beta):
+            value = -1000000
+            bestAction = ""
+            actions = gameState.getLegalActions(agentIndex)
+            for i in actions:
+                child = gameState.generateSuccessor(agentIndex, i)
+                util = performAlphaBeta(depth, agentIndex + 1, child, alpha, beta)[0]
+                alpha = max(alpha, util)
+                if util > value:
+                    value = util
+                    bestAction = i
+                if value > beta:
+                    return value, bestAction
+            return value, bestAction
+        
+        def minValue(depth, agentIndex, gameState, alpha, beta):
+            nextAgent = agentIndex + 1
+            nextDepth = depth
+
+            #if all ghosts have gone, make next agent pacman and go down a depth
+            if nextAgent == gameState.getNumAgents():
+                nextAgent = 0
+                nextDepth -= 1
+
+            value = 1000000
+            actions = gameState.getLegalActions(agentIndex)
+            for i in actions:
+                child = gameState.generateSuccessor(agentIndex, i)
+                value = min(value, performAlphaBeta(nextDepth, nextAgent, child, alpha, beta)[0])
+                beta = min(beta, value)
+                if value < alpha:
+                    return value, ""
+            return value, ""
+
+        return performAlphaBeta(self.depth, 0, gameState, -100000, 1000000)[1]
 
 class ExpectimaxAgent(MultiAgentSearchAgent):
     """
@@ -162,7 +288,49 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
         legal moves.
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        def performExpectiMax(depth, agentIndex, gameState):
+            #if node is terminal or depth = 0
+            if (gameState.isWin() or gameState.isLose() or depth == 0):
+                return self.evaluationFunction(gameState), ""
+
+            if agentIndex == 0:
+                return maxValue(depth, agentIndex, gameState)
+            # agent is a ghost
+            else:
+                return expValue(depth, agentIndex, gameState)
+
+        def maxValue(depth, agentIndex, gameState):
+            value = -1000000
+            bestAction = ""
+            actions = gameState.getLegalActions(agentIndex)
+            for i in actions:
+                child = gameState.generateSuccessor(agentIndex, i)
+                util = performExpectiMax(depth, agentIndex + 1, child)[0]
+                if util > value:
+                    value = util
+                    bestAction = i
+            return value, bestAction
+        
+        def expValue(depth, agentIndex, gameState):
+            nextAgent = agentIndex + 1
+            nextDepth = depth
+
+            #if all ghosts have gone, make next agent pacman and go down a depth
+            if nextAgent == gameState.getNumAgents():
+                nextAgent = 0
+                nextDepth -= 1
+
+            value = 1000000
+            actions = gameState.getLegalActions(agentIndex)
+            numActions = len(actions)
+            sum = 0
+            prob = 1.0 / numActions
+            for i in actions:
+                child = gameState.generateSuccessor(agentIndex, i)
+                value = prob * self.evaluationFunction(child)
+            return value, ""
+
+        return performExpectiMax(self.depth, 0, gameState)[1]
 
 def betterEvaluationFunction(currentGameState):
     """
