@@ -312,22 +312,23 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
             return value, bestAction
         
         def expValue(depth, agentIndex, gameState):
-            nextAgent = agentIndex + 1
-            nextDepth = depth
 
-            #if all ghosts have gone, make next agent pacman and go down a depth
-            if nextAgent == gameState.getNumAgents():
-                nextAgent = 0
-                nextDepth -= 1
-
-            value = 1000000
             actions = gameState.getLegalActions(agentIndex)
             numActions = len(actions)
-            sum = 0
+            value = 0
             prob = 1.0 / numActions
             for i in actions:
+                nextAgent = agentIndex + 1
+                nextDepth = depth
+
+                #if all ghosts have gone, make next agent pacman and go down a depth
+                if nextAgent == gameState.getNumAgents():
+                    nextAgent = 0
+                    nextDepth -= 1
+
+                
                 child = gameState.generateSuccessor(agentIndex, i)
-                value = prob * self.evaluationFunction(child)
+                value += prob * performExpectiMax(nextDepth, nextAgent, child)[0]
             return value, ""
 
         return performExpectiMax(self.depth, 0, gameState)[1]
@@ -337,10 +338,49 @@ def betterEvaluationFunction(currentGameState):
     Your extreme ghost-hunting, pellet-nabbing, food-gobbling, unstoppable
     evaluation function (question 5).
 
-    DESCRIPTION: <write something here so we know what you did>
+    DESCRIPTION: <accumulate score based on the following positive factors:
+    how close pacman is to food
+    how far pacman is from ghost
+    how close pacman is to a scared ghost (within a certain distance and scaredtime)
+    how close pacman is to a capsule
+    if the move will win the game
+    if the move will lose the game>
     """
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+
+    pacmanPos = currentGameState.getPacmanPosition()
+    foodPos = currentGameState.getFood().asList()
+    capPos = currentGameState.getCapsules()
+    ghostPos = currentGameState.getGhostPositions()
+    ghostStates = currentGameState.getGhostStates()
+    scaredTimes = [ghostState.scaredTimer for ghostState in ghostStates]
+    score = 1000 * currentGameState.getScore()
+    foodScore = 0
+    ghostScore = 0
+    totalScore = 0
+    # check if successor is win or loss
+    if currentGameState.isWin():
+        return 1000000
+    elif currentGameState.isLose():
+        return -1000000
+
+    #the more food and the farther they r, the lesser the score
+    for i in foodPos:
+        foodScore += 100 / manhattanDistance(pacmanPos, i) 
+
+    for i in capPos:
+        foodScore += 30 / manhattanDistance(pacmanPos, i) 
+
+    for i in range(len(ghostStates)):
+        if ghostStates[i].scaredTimer > 0:
+            ghostScore += 1/(((manhattanDistance(pacmanPos, ghostPos[i])) * scaredTimes[i])+1)
+        elif ghostStates[i].scaredTimer == 0:
+            ghostScore += manhattanDistance(pacmanPos, ghostPos[i])
+                     
+
+    
+        totalScore = score + foodScore + ghostScore
+    return totalScore
 
 # Abbreviation
 better = betterEvaluationFunction
